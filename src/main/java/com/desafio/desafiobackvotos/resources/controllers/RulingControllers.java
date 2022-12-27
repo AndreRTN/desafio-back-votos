@@ -53,15 +53,14 @@ public class RulingControllers {
 
     @PutMapping("vote/{id}")
     private Mono<VoteResponseDTO> vote(@PathVariable Long id, @Valid @RequestBody VoteRequestDTO dto) {
-        Mono<VoteResponseDTO> responseDTOMono = webClient.get().uri("/users/" + dto.getCpf()).exchangeToMono(res -> {
+
+        return webClient.get().uri("/users/" + dto.getCpf()).exchangeToMono(res -> {
             if(res.statusCode().is4xxClientError()) throw  new UnableToVoteException(dto.getCpf());
             String voteType = dto.getPositiveVote() ? "Positivo" : "Negativo";
             Ruling ruling = rulingService.vote(dto, id);
             String message = String.format("Voto %s realizado na Pauta: %s", voteType, ruling.getName());
             return Mono.just(new VoteResponseDTO(message));
         });
-
-        return responseDTOMono;
     }
 
     @ExceptionHandler(RulingNotOpenedException.class)

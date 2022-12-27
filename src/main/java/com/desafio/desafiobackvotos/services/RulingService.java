@@ -5,6 +5,7 @@ import com.desafio.desafiobackvotos.common.exceptions.RulingExpiratedException;
 import com.desafio.desafiobackvotos.common.exceptions.RulingNotFoundException;
 import com.desafio.desafiobackvotos.common.exceptions.RulingNotOpenedException;
 import com.desafio.desafiobackvotos.common.pojo.RulingResultKafkaMessage;
+import com.desafio.desafiobackvotos.common.type.VoteResultType;
 import com.desafio.desafiobackvotos.constants.Topics;
 import com.desafio.desafiobackvotos.models.Associate;
 import com.desafio.desafiobackvotos.models.Ruling;
@@ -30,7 +31,6 @@ import java.util.Optional;
 @Service
 @Slf4j
 public class RulingService {
-
 
   private final KafkaTemplate<String, String > kafkaTemplate;
     private final RulingRepository rulingRepository;
@@ -61,14 +61,19 @@ public class RulingService {
         return ruling;
     }
 
+    public Boolean hasExpired(Ruling ruling) {
+        LocalDateTime now = LocalDateTime.now();
+        return ruling.getExpired_date().isBefore(now);
+    }
+
     @Transactional
     public Ruling vote(VoteRequestDTO dto, Long id ) {
 
-        Optional<Associate> hasAssociate = associateRepository.findById(dto.getCpf());
         Ruling ruling = rulingRepository.findById(id).orElseThrow(() -> new RulingNotFoundException(id));
         if(!ruling.getIsOpen() && !ruling.getExpirated()) throw new RulingNotOpenedException();
-        if(ruling.getExpirated()) throw  new RulingExpiratedException(id);
+        if(ruling.getExpirated() || hasExpired(ruling)) throw  new RulingExpiratedException(id);
 
+        Optional<Associate> hasAssociate = associateRepository.findById(dto.getCpf());
         Boolean alreadyVoted = associateRepository.alreadyVotedRuling(id, dto.getCpf());
         if(alreadyVoted) throw new AssociateAlreadyVotedException(ruling.getName());
 
@@ -97,14 +102,16 @@ public class RulingService {
     @Async
     public void checkRulingSession() {
         List<Ruling> openRulings = rulingRepository.findAllByIsOpenAndExpiratedNot(true, true);
-        List<Ruling> expiratedRulings = openRulings.stream()
+        List<Ruling> expiredRulings = openRulings.stream()
                 .filter(ruling -> ruling.getExpired_date().isBefore(LocalDateTime.now()))
                 .toList();
-        expiratedRulings.forEach(rul -> {
+        expiredRulings.forEach(rul -> {
             rul.setIsOpen(false);
             rul.setExpirated(true);
             RulingResultKafkaMessage kafkaMessage = new RulingResultKafkaMessage();
             BeanUtils.copyProperties(rul, kafkaMessage);
+            VoteResultType resultType = kafkaMessage.getPositiveVote() > kafkaMessage.getNegativeVote() ? VoteResultType.WIN : VoteResultType.LOSE;
+            kafkaMessage.setResult(resultType);
             try {
                 String kafkaMessageJson = objectMapper.writeValueAsString(kafkaMessage);
                 kafkaTemplate.send(Topics.VOTE_RESULT_TOPIC, kafkaMessageJson);
@@ -114,8 +121,8 @@ public class RulingService {
 
 
         });
-        if(!expiratedRulings.isEmpty()) log.info(String.format("Enviando %s resultados para o tópico %s", expiratedRulings.size(), Topics.VOTE_RESULT_TOPIC));
-        rulingRepository.saveAll(expiratedRulings);
+        if(!expiredRulings.isEmpty()) log.info(String.format("Enviando %s resultados para o tópico %s", expiredRulings.size(), Topics.VOTE_RESULT_TOPIC));
+        rulingRepository.saveAll(expiredRulings);
     }
 
     public Ruling convertDTOToModel(RulingDTO dto) {
