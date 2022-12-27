@@ -1,10 +1,8 @@
 package com.desafio.desafiobackvotos.services;
 
 
-import com.desafio.desafiobackvotos.common.exceptions.AssociateAlreadyVotedException;
-import com.desafio.desafiobackvotos.common.exceptions.RulingExpiratedException;
-import com.desafio.desafiobackvotos.common.exceptions.RulingNotFoundException;
-import com.desafio.desafiobackvotos.common.exceptions.RulingNotOpenedException;
+import com.desafio.desafiobackvotos.common.exceptions.*;
+import com.desafio.desafiobackvotos.config.WebClientConfig;
 import com.desafio.desafiobackvotos.models.Associate;
 import com.desafio.desafiobackvotos.models.Ruling;
 import com.desafio.desafiobackvotos.repository.AssociateRepository;
@@ -14,31 +12,31 @@ import com.desafio.desafiobackvotos.resources.dto.RulingResultResponseDTO;
 import com.desafio.desafiobackvotos.resources.dto.VoteRequestDTO;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Hibernate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class RulingService {
 
-    private RulingRepository rulingRepository;
-    private AssociateRepository associateRepository;
+    private final RulingRepository rulingRepository;
+    private final AssociateRepository associateRepository;
+    private final WebClient webClient;
 
     @Autowired
-    public RulingService(RulingRepository rulingRepository, AssociateRepository associateRepository) {
+    public RulingService(RulingRepository rulingRepository, AssociateRepository associateRepository, WebClientConfig config) {
         this.rulingRepository = rulingRepository;
         this.associateRepository = associateRepository;
+        this.webClient = WebClient.builder().build();
     }
 
     public Ruling save(RulingDTO dto) {
@@ -46,11 +44,6 @@ public class RulingService {
         rulingRepository.save(ruling);
         return ruling;
     }
-
-    private void expiresRuling(Ruling ruling) {
-
-    }
-
 
     public Ruling openRuling(Long id) {
         Ruling ruling = rulingRepository.findById(id).orElseThrow(() -> new RulingNotFoundException(id));
@@ -64,6 +57,7 @@ public class RulingService {
 
     @Transactional
     public Ruling vote(VoteRequestDTO dto, Long id ) {
+
         Optional<Associate> hasAssociate = associateRepository.findById(dto.getCpf());
         Ruling ruling = rulingRepository.findById(id).orElseThrow(() -> new RulingNotFoundException(id));
         if(!ruling.getIsOpen() && !ruling.getExpirated()) throw new RulingNotOpenedException();
