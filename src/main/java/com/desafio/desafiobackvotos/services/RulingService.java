@@ -1,8 +1,11 @@
 package com.desafio.desafiobackvotos.services;
 
-
-import com.desafio.desafiobackvotos.common.exceptions.*;
-import com.desafio.desafiobackvotos.config.WebClientConfig;
+import com.desafio.desafiobackvotos.common.exceptions.AssociateAlreadyVotedException;
+import com.desafio.desafiobackvotos.common.exceptions.RulingExpiratedException;
+import com.desafio.desafiobackvotos.common.exceptions.RulingNotFoundException;
+import com.desafio.desafiobackvotos.common.exceptions.RulingNotOpenedException;
+import com.desafio.desafiobackvotos.common.pojo.RulingResultKafkaMessage;
+import com.desafio.desafiobackvotos.constants.Topics;
 import com.desafio.desafiobackvotos.models.Associate;
 import com.desafio.desafiobackvotos.models.Ruling;
 import com.desafio.desafiobackvotos.repository.AssociateRepository;
@@ -10,16 +13,16 @@ import com.desafio.desafiobackvotos.repository.RulingRepository;
 import com.desafio.desafiobackvotos.resources.dto.RulingDTO;
 import com.desafio.desafiobackvotos.resources.dto.RulingResultResponseDTO;
 import com.desafio.desafiobackvotos.resources.dto.VoteRequestDTO;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -28,15 +31,18 @@ import java.util.Optional;
 @Slf4j
 public class RulingService {
 
+
+  private final KafkaTemplate<String, String > kafkaTemplate;
     private final RulingRepository rulingRepository;
     private final AssociateRepository associateRepository;
-    private final WebClient webClient;
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public RulingService(RulingRepository rulingRepository, AssociateRepository associateRepository, WebClientConfig config) {
+    public RulingService(RulingRepository rulingRepository, AssociateRepository associateRepository, KafkaTemplate<String,String> kafkaTemplate, ObjectMapper mapper) {
         this.rulingRepository = rulingRepository;
         this.associateRepository = associateRepository;
-        this.webClient = WebClient.builder().build();
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = mapper;
     }
 
     public Ruling save(RulingDTO dto) {
@@ -97,8 +103,18 @@ public class RulingService {
         expiratedRulings.forEach(rul -> {
             rul.setIsOpen(false);
             rul.setExpirated(true);
+            RulingResultKafkaMessage kafkaMessage = new RulingResultKafkaMessage();
+            BeanUtils.copyProperties(rul, kafkaMessage);
+            try {
+                String kafkaMessageJson = objectMapper.writeValueAsString(kafkaMessage);
+                kafkaTemplate.send(Topics.VOTE_RESULT_TOPIC, kafkaMessageJson);
+            } catch (JsonProcessingException e) {
+                log.error("Erro ao tentar enviar mensagem para o tópico ");
+            }
+
 
         });
+        if(!expiratedRulings.isEmpty()) log.info(String.format("Enviando %s resultados para o tópico %s", expiratedRulings.size(), Topics.VOTE_RESULT_TOPIC));
         rulingRepository.saveAll(expiratedRulings);
     }
 
