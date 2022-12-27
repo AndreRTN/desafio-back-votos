@@ -1,6 +1,5 @@
 package com.desafio.desafiobackvotos.services;
 
-
 import com.desafio.desafiobackvotos.common.exceptions.AssociateAlreadyVotedException;
 import com.desafio.desafiobackvotos.common.exceptions.RulingExpiratedException;
 import com.desafio.desafiobackvotos.common.exceptions.RulingNotFoundException;
@@ -32,7 +31,8 @@ import java.util.Optional;
 @Slf4j
 public class RulingService {
 
-    private final KafkaTemplate<String, String > kafkaTemplate;
+
+  private final KafkaTemplate<String, String > kafkaTemplate;
     private final RulingRepository rulingRepository;
     private final AssociateRepository associateRepository;
     private final ObjectMapper objectMapper;
@@ -63,6 +63,7 @@ public class RulingService {
 
     @Transactional
     public Ruling vote(VoteRequestDTO dto, Long id ) {
+
         Optional<Associate> hasAssociate = associateRepository.findById(dto.getCpf());
         Ruling ruling = rulingRepository.findById(id).orElseThrow(() -> new RulingNotFoundException(id));
         if(!ruling.getIsOpen() && !ruling.getExpirated()) throw new RulingNotOpenedException();
