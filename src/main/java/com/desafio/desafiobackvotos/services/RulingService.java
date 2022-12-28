@@ -20,6 +20,9 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,17 +35,15 @@ import java.util.Optional;
 @Slf4j
 public class RulingService {
 
-  private final KafkaTemplate<String, String > kafkaTemplate;
+    private final KafkaTemplate<String, String > kafkaTemplate;
     private final RulingRepository rulingRepository;
     private final AssociateRepository associateRepository;
-    private final ObjectMapper objectMapper;
 
     @Autowired
-    public RulingService(RulingRepository rulingRepository, AssociateRepository associateRepository, KafkaTemplate<String,String> kafkaTemplate, ObjectMapper mapper) {
+    public RulingService(RulingRepository rulingRepository, AssociateRepository associateRepository, KafkaTemplate<String,String> kafkaTemplate) {
         this.rulingRepository = rulingRepository;
         this.associateRepository = associateRepository;
         this.kafkaTemplate = kafkaTemplate;
-        this.objectMapper = mapper;
     }
 
     public Ruling save(RulingDTO dto) {
@@ -113,6 +114,7 @@ public class RulingService {
             VoteResultType resultType = kafkaMessage.getPositiveVote() > kafkaMessage.getNegativeVote() ? VoteResultType.WIN : VoteResultType.LOSE;
             kafkaMessage.setResult(resultType);
             try {
+                ObjectMapper objectMapper = new ObjectMapper();
                 String kafkaMessageJson = objectMapper.writeValueAsString(kafkaMessage);
                 kafkaTemplate.send(Topics.VOTE_RESULT_TOPIC, kafkaMessageJson);
             } catch (JsonProcessingException e) {
@@ -121,8 +123,15 @@ public class RulingService {
 
 
         });
-        if(!expiredRulings.isEmpty()) log.info(String.format("Enviando %s resultados para o tópico %s", expiredRulings.size(), Topics.VOTE_RESULT_TOPIC));
+        if(!expiredRulings.isEmpty()) {
+            updateExpired(expiredRulings);
+        }
+
+    }
+
+    public void updateExpired(List<Ruling> expiredRulings) {
         rulingRepository.saveAll(expiredRulings);
+        log.info(String.format("Enviando %s resultados para o tópico %s", expiredRulings.size(), Topics.VOTE_RESULT_TOPIC));
     }
 
     public Ruling convertDTOToModel(RulingDTO dto) {
@@ -133,11 +142,16 @@ public class RulingService {
     }
 
 
+    @Cacheable("results")
     public RulingResultResponseDTO rulingResult(Long id) {
         Ruling ruling = rulingRepository.findById(id).orElseThrow(() -> new RulingNotFoundException(id));
+
         if(!ruling.getIsOpen() && !ruling.getExpirated()) throw new RulingNotOpenedException("A Pauta ainda não foi aberta para votação, não há contagem de votos no momento");
+        if(!ruling.getExpirated()) throw new RulingNotOpenedException("A pauta ainda está em andamento");
         RulingResultResponseDTO dto = new RulingResultResponseDTO();
         BeanUtils.copyProperties(ruling, dto);
+        VoteResultType voteResultType  = ruling.getPositiveVote() > ruling.getNegativeVote() ? VoteResultType.WIN : VoteResultType.LOSE;
+        dto.setResult(voteResultType);
 
         return dto;
     }

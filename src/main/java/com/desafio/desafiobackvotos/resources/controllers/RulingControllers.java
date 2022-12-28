@@ -13,6 +13,7 @@ import com.desafio.desafiobackvotos.services.RulingService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +29,7 @@ import java.util.Objects;
 @Slf4j
 public class RulingControllers {
 
-    private final RulingService rulingService;
+    public  RulingService rulingService;
     private final WebClient webClient;
     @Autowired
     public RulingControllers(RulingService rulingService, WebClientConfig config) {
@@ -99,7 +100,7 @@ public class RulingControllers {
     }
 
     @GetMapping("result/{id}")
-    private Mono<RulingResultResponseDTO> rulingResult(@PathVariable Long id) {
+    public Mono<RulingResultResponseDTO> rulingResult(@PathVariable Long id) {
         return Mono.just(rulingService.rulingResult(id));
     }
 
