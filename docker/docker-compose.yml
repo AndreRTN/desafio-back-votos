@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  desafio-backend-votos:
+    image: postgres
+    container_name: desafio-backend-votos
+    environment:
+      - POSTGRES_PASSWORD=backendvotos123
+    ports:
+      - "5432:5432"
+    volumes:
+      - C:/JavaTests/votos:/var/lib/postgresql/data
+    networks:
+      - postgres-network
+
+  teste-pgadmin:
+    image: dpage/pgadmin4
+    container_name: teste-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=backendvotos@gmail.com
+      - PGADMIN_DEFAULT_PASSWORD=backendvotos123
+    ports:
+      - "15432:80"
+    networks:
+      - postgres-network
+
+networks:
+  postgres-network:
+    driver: bridge
