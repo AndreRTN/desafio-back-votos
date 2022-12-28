@@ -7,7 +7,6 @@ import com.desafio.desafiobackvotos.config.WebClientConfig;
 import com.desafio.desafiobackvotos.resources.dto.ValidCPFResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,12 +17,12 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("associate")
-public class AssociateControllers {
+public class AssociateController {
 
     private WebClient webClient;
 
     @Autowired
-    public AssociateControllers(WebClientConfig config) {
+    public AssociateController(WebClientConfig config) {
         this.webClient = config.webClient();
     }
 

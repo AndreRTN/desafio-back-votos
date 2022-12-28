@@ -13,26 +13,23 @@ import com.desafio.desafiobackvotos.services.RulingService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/rulings")
 @Slf4j
-public class RulingControllers {
+public class RulingController {
 
     public  RulingService rulingService;
     private final WebClient webClient;
     @Autowired
-    public RulingControllers(RulingService rulingService, WebClientConfig config) {
+    public RulingController(RulingService rulingService, WebClientConfig config) {
         this.rulingService = rulingService;
         this.webClient = config.webClient();
     }

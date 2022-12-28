@@ -85,7 +85,6 @@ public class RulingService {
         }, () -> {
             Associate associate = new Associate();
             associate.setCpf(dto.getCpf());
-            associate.setVoted_at(LocalDateTime.now());
             associate.addRuling(ruling);
             associateRepository.save(associate);
         });
