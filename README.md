@@ -17,3 +17,41 @@ GET https://user-info.herokuapp.com/associates/{cpf}
 
 Tarefa Bônus 2 - Mensageria e filas
 - [x] Classificação da informação: Uso Interno O resultado da votação precisa ser informado para o restante da plataforma, isso deve ser feito preferencialmente através de mensageria. Quando a sessão de votação fechar, poste uma mensagem com o resultado da votação.
+
+Tarefa Bônus 3 - Performance
+
+Realizei alguns testes de perfomance usando o JMeter, nos testes de resultado eu usei 100 mil o número de requests,
+já no de cadastro da pauta e de votação utilizei 10 mil.
+
+- Primeiro teste - Resultado da votação na pauta
+  - Como após a contagem dos votos o resultado da pauta não irá mudar, tomei a decisão de usar cache nesse endpoint, 
+  fazendo com que ele consiga atender a 3301 solicitações por segundo, o que daria 198060 por minuto.
+
+
+- Segundo teste - Cadastrar Pauta
+  -  Como aqui é necessário fazer chamada ao banco de dados, o número de solicitações atendidas por segundo é menor que
+  o teste anterior, 209 por segundo, o que daria 12540 por minuto
+
+
+- Terceiro teste - Votação
+  -  Por ter uma validação maior: usuário pode votar apenas uma vez por pauta, verificar se a sessão de votação está aberta ou se a pauta já encerrou
+  - esse é o método que mais leva tempo para atender as solicitações, 70.5 por segundo, 4230 por minuto
+  - para contornar esse problema , vejo várias formas:
+    - Usar réplicas de bancos de leitura e de escrita para maior escalabilidade
+    - Cluster de banco de dados
+    - Se o tempo de resposta for muito importante para o usuário, utilizar um sistema de filas e mensageria para ir adicionando
+    os votos e salvar quando o sistema conseguir processar
+    - Processar votos em lotes, em vez de abrir uma conexão com o banco para cada requisição feita, processar em um range, como de 1000 em 1000 votos, a cada X segundos
+
+
+# Explicação sobre algumas decisões tomadas:
+  - Decidi utilizar o Webflux em vez do Spring MVC Tradicional devido ao paradigma reativo e por fazer melhor uso das threads
+  abertas por requests, fonte: https://www.baeldung.com/spring-mvc-async-vs-webflux
+  - Criei uma aplicação a mais  que consome os resultados da votação da pauta do kafka para isolar as responsabilidades, 
+  já que além de outros serviços e aplicações também conseguirem enviar a mensagem para esse consumidor, se alguma das aplicações sofrer com gargalo, a outra não é afetada.
+  - Como não encontrei nenhuma API gratuita e de facil acesso para checar se o  CPF Disponível pode votar, criei um microsserviço que verifica um cpf e retorna se é valido.
+  - Utilizei o cache default do spring para evitar over engineering, mas acredito que algo como o Redis encaixaria melhor para o propósito da aplicação.
+  - Para checar se a votação da pauta já foi encerrada, utilizei um job que roda a cada 1 minuto, pegando todos as pautas que estão em andamento
+  e que ainda não expiraram para reduzir a quantidade de chamadas ao banco, existem outras formas de fazer isso, como o tempo do job é de 1 minuto pode acontecer de os
+  dados não estarem sincronizados, então no momento da votação eu valido se já encerrou também, e quando o job rodar novamente irá atualizar a tabela no banco de dados.
+
