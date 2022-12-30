@@ -1,11 +1,9 @@
 package com.desafio.desafiobackvotos.services;
 
-import com.desafio.desafiobackvotos.common.exceptions.AssociateAlreadyVotedException;
-import com.desafio.desafiobackvotos.common.exceptions.RulingExpiratedException;
-import com.desafio.desafiobackvotos.common.exceptions.RulingNotFoundException;
-import com.desafio.desafiobackvotos.common.exceptions.RulingNotOpenedException;
+import com.desafio.desafiobackvotos.common.exceptions.*;
 import com.desafio.desafiobackvotos.common.pojo.RulingResultKafkaMessage;
 import com.desafio.desafiobackvotos.common.type.VoteResultType;
+
 import com.desafio.desafiobackvotos.constants.Topics;
 import com.desafio.desafiobackvotos.models.Associate;
 import com.desafio.desafiobackvotos.models.Ruling;
@@ -20,30 +18,35 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+
 import java.time.LocalDateTime;
 import java.util.List;
+
 import java.util.Optional;
 
 @Service
 @Slf4j
 public class RulingService {
 
-    private final KafkaTemplate<String, String > kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
     private final RulingRepository rulingRepository;
     private final AssociateRepository associateRepository;
 
     @Autowired
-    public RulingService(RulingRepository rulingRepository, AssociateRepository associateRepository, KafkaTemplate<String,String> kafkaTemplate) {
+    public RulingService(RulingRepository rulingRepository, AssociateRepository associateRepository, KafkaTemplate<String, String> kafkaTemplate) {
         this.rulingRepository = rulingRepository;
         this.associateRepository = associateRepository;
         this.kafkaTemplate = kafkaTemplate;
+
     }
 
     public Ruling save(RulingDTO dto) {
@@ -54,8 +57,8 @@ public class RulingService {
 
     public Ruling openRuling(Long id) {
         Ruling ruling = rulingRepository.findById(id).orElseThrow(() -> new RulingNotFoundException(id));
-        if(ruling.getExpirated()) throw new RulingExpiratedException(id);
-        if(ruling.getIsOpen()) return ruling;
+        if (ruling.getExpirated()) throw new RulingExpiratedException(id);
+        if (ruling.getIsOpen()) return ruling;
         ruling.setIsOpen(true);
         ruling.setExpired_date(LocalDateTime.now().plusMinutes(ruling.getMinutesToEnd()));
         rulingRepository.save(ruling);
@@ -68,31 +71,31 @@ public class RulingService {
     }
 
     @Transactional
-    public Ruling vote(VoteRequestDTO dto, Long id ) {
+    public Ruling vote(VoteRequestDTO dto, Long id) {
 
-        Ruling ruling = rulingRepository.findById(id).orElseThrow(() -> new RulingNotFoundException(id));
-        if(!ruling.getIsOpen() && !ruling.getExpirated()) throw new RulingNotOpenedException();
-        if(ruling.getExpirated() || hasExpired(ruling)) throw  new RulingExpiratedException(id);
+                String voteType = dto.getPositiveVote() ? "Positivo" : "Negativo";
+                Ruling ruling = rulingRepository.findById(id).orElseThrow(() -> new RulingNotFoundException(id));
+                String message = String.format("Voto %s realizado na Pauta: %s", voteType, ruling.getName());
+                if (!ruling.getIsOpen() && !ruling.getExpirated()) throw new RulingNotOpenedException();
+                if (ruling.getExpirated() || hasExpired(ruling)) throw new RulingExpiratedException(id);
 
-        Optional<Associate> hasAssociate = associateRepository.findById(dto.getCpf());
-        Boolean alreadyVoted = associateRepository.alreadyVotedRuling(id, dto.getCpf());
-        if(alreadyVoted) throw new AssociateAlreadyVotedException(ruling.getName());
+                Optional<Associate> hasAssociate = associateRepository.findById(dto.getCpf());
+                Boolean alreadyVoted = associateRepository.alreadyVotedRuling(id, dto.getCpf());
+                if (alreadyVoted) throw new AssociateAlreadyVotedException(ruling.getName());
 
-        ruling.addVote(dto.getPositiveVote());
-        hasAssociate.ifPresentOrElse(associate -> {
-            associate.addRuling(ruling);
-            associateRepository.save(associate);
-        }, () -> {
-            Associate associate = new Associate();
-            associate.setCpf(dto.getCpf());
-            associate.addRuling(ruling);
-            associateRepository.save(associate);
-        });
-
-        return ruling;
-
-
+                ruling.addVote(dto.getPositiveVote());
+                hasAssociate.ifPresentOrElse(associate -> {
+                    associate.addRuling(ruling);
+                    associateRepository.save(associate);
+                }, () -> {
+                    Associate associate = new Associate();
+                    associate.setCpf(dto.getCpf());
+                    associate.addRuling(ruling);
+                    associateRepository.save(associate);
+                });
+                return ruling;
     }
+
     public List<Ruling> listAll() {
         return rulingRepository.findAll();
     }
@@ -122,7 +125,7 @@ public class RulingService {
 
 
         });
-        if(!expiredRulings.isEmpty()) {
+        if (!expiredRulings.isEmpty()) {
             updateExpired(expiredRulings);
         }
 
@@ -145,11 +148,12 @@ public class RulingService {
     public RulingResultResponseDTO rulingResult(Long id) {
         Ruling ruling = rulingRepository.findById(id).orElseThrow(() -> new RulingNotFoundException(id));
 
-        if(!ruling.getIsOpen() && !ruling.getExpirated()) throw new RulingNotOpenedException("A Pauta ainda não foi aberta para votação, não há contagem de votos no momento");
-        if(!ruling.getExpirated()) throw new RulingNotOpenedException("A pauta ainda está em andamento");
+        if (!ruling.getIsOpen() && !ruling.getExpirated())
+            throw new RulingNotOpenedException("A Pauta ainda não foi aberta para votação, não há contagem de votos no momento");
+        if (!ruling.getExpirated()) throw new RulingNotOpenedException("A pauta ainda está em andamento");
         RulingResultResponseDTO dto = new RulingResultResponseDTO();
         BeanUtils.copyProperties(ruling, dto);
-        VoteResultType voteResultType  = ruling.getPositiveVote() > ruling.getNegativeVote() ? VoteResultType.WIN : VoteResultType.LOSE;
+        VoteResultType voteResultType = ruling.getPositiveVote() > ruling.getNegativeVote() ? VoteResultType.WIN : VoteResultType.LOSE;
         dto.setResult(voteResultType);
 
         return dto;

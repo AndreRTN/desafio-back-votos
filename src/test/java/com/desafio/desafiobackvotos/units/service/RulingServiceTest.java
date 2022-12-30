@@ -6,6 +6,7 @@ import com.desafio.desafiobackvotos.common.exceptions.RulingExpiratedException;
 import com.desafio.desafiobackvotos.common.exceptions.RulingNotFoundException;
 import com.desafio.desafiobackvotos.common.exceptions.RulingNotOpenedException;
 import com.desafio.desafiobackvotos.common.type.VoteResultType;
+import com.desafio.desafiobackvotos.config.WebClientConfig;
 import com.desafio.desafiobackvotos.models.Associate;
 import com.desafio.desafiobackvotos.models.Ruling;
 import com.desafio.desafiobackvotos.repository.AssociateRepository;
@@ -19,16 +20,22 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 @RunWith(SpringRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RulingServiceTest {
 
     @Mock
@@ -167,7 +174,7 @@ public class RulingServiceTest {
     }
 
     @Test
-    @DisplayName("Ao tentar votar em uma pauta encerrad, deve lançar not expired exception")
+    @DisplayName("Ao tentar votar em uma pauta encerrada, deve lançar not expired exception")
     public void whenVoteInExpiredRulingShouldThrowExpiredException() {
         rulingModel.setExpirated(true);
         rulingModel.setIsOpen(true);

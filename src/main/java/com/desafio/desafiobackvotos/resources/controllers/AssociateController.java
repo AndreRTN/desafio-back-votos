@@ -19,17 +19,14 @@ import reactor.core.publisher.Mono;
 @RequestMapping("associate")
 public class AssociateController {
 
-    private WebClient webClient;
-
     @Autowired
-    public AssociateController(WebClientConfig config) {
-        this.webClient = config.webClient();
-    }
+    private WebClient myWebClient;
+
 
     @GetMapping("check/{cpf}")
     private Mono<ResponseEntity<Object>> checkCpf(@PathVariable String cpf) {
 
-        Mono<ResponseEntity<Object>> responseSpec = webClient.get().uri("/users/" + cpf)
+        Mono<ResponseEntity<Object>> responseSpec = myWebClient.get().uri("/users/" + cpf)
                 .exchangeToMono(response -> {
                     if(response.statusCode().is4xxClientError()) {
                         ErrorRestResult errorRestResult = new ErrorRestResult(HttpStatus.NOT_FOUND.value(),"CPF inválido");
