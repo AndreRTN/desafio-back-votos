@@ -1,9 +1,9 @@
 version: '3'
 
 services:
-  desafio-backend-votos:
+  pg-backend:
     image: postgres
-    container_name: desafio-backend-votos
+    container_name: pg-backend
     environment:
       - POSTGRES_PASSWORD=backendvotos123
     ports:
@@ -13,6 +13,20 @@ services:
     networks:
       - postgres-network
 
+  back-end-app:
+    image: spring-app
+    container_name: backend-server
+    depends_on:
+      - pg-backend
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://pg-backend:5432/postgres
+      - SPRING_DATASOURCE_PASSWORD=backendvotos123
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
+    networks:
+      - postgres-network
+    ports:
+      - "8080:8080"
   teste-pgadmin:
     image: dpage/pgadmin4
     container_name: teste-pgadmin
