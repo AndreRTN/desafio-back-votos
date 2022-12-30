@@ -14,7 +14,7 @@
     <name>desafio-back-votos</name>
     <description>desafio-back-votos</description>
     <properties>
-        <java.version>11</java.version>
+        <java.version>17</java.version>
         <maven.test.skip>true</maven.test.skip>
     </properties>
     <dependencies>
