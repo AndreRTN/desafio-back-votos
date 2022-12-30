@@ -4,6 +4,7 @@
 - Docker (Se não possuir o docker precisará baixar as dependências contidas nos arquivos compose.yml e configurar manualmente)
 
 - JDK 17
+- Maven (ou pode baixar o .jar diretamente)
 - Microservice da validação do CPF e dos resultados (o projeto funciona sem ele , mas não irá enviar a mensagem para o kafka
 e nem será possível validar o cpf) https://github.com/AndreRTN/votos-microservice
 
