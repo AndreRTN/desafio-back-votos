@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -107,7 +108,7 @@ public class RulingService {
         List<Ruling> openRulings = rulingRepository.findAllByIsOpenAndExpiratedNot(true, true);
         List<Ruling> expiredRulings = openRulings.stream()
                 .filter(ruling -> ruling.getExpired_date().isBefore(LocalDateTime.now()))
-                .toList();
+                .collect(Collectors.toList());
         expiredRulings.forEach(rul -> {
             rul.setIsOpen(false);
             rul.setExpirated(true);
