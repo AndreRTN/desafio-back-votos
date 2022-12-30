@@ -11,12 +11,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 
 @Configuration
+
 public class WebClientConfig {
 
     @Value("${api.cpf-validation.url}")
     private String baseUrl;
     @Bean
-    public WebClient webClient() {
+    public WebClient myWebClient() {
         return WebClient.builder().baseUrl("")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .baseUrl(baseUrl)

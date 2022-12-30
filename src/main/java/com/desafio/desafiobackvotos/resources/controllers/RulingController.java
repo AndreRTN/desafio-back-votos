@@ -3,38 +3,37 @@ package com.desafio.desafiobackvotos.resources.controllers;
 import com.desafio.desafiobackvotos.common.exceptions.*;
 import com.desafio.desafiobackvotos.common.pojo.ErrorRestResult;
 import com.desafio.desafiobackvotos.common.type.VoteType;
-import com.desafio.desafiobackvotos.config.WebClientConfig;
 import com.desafio.desafiobackvotos.models.Ruling;
 import com.desafio.desafiobackvotos.resources.dto.RulingDTO;
 import com.desafio.desafiobackvotos.resources.dto.RulingResultResponseDTO;
 import com.desafio.desafiobackvotos.resources.dto.VoteRequestDTO;
-import com.desafio.desafiobackvotos.resources.dto.VoteResponseDTO;
 import com.desafio.desafiobackvotos.services.RulingService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping("/rulings")
 @Slf4j
-public class RulingControllers {
+public class RulingController {
 
     public  RulingService rulingService;
-    private final WebClient webClient;
+
     @Autowired
-    public RulingControllers(RulingService rulingService, WebClientConfig config) {
+    private  WebClient myWebClient;
+    @Autowired
+    public RulingController(RulingService rulingService) {
         this.rulingService = rulingService;
-        this.webClient = config.webClient();
+
     }
 
     @PutMapping("open/{id}")
@@ -53,15 +52,13 @@ public class RulingControllers {
     }
 
     @PutMapping("vote/{id}")
-    private Mono<VoteResponseDTO> vote(@PathVariable Long id, @Valid @RequestBody VoteRequestDTO dto) {
-
-        return webClient.get().uri("/users/" + dto.getCpf()).exchangeToMono(res -> {
-            if(res.statusCode().is4xxClientError()) throw  new UnableToVoteException(dto.getCpf());
-            String voteType = dto.getPositiveVote() ? "Positivo" : "Negativo";
-            Ruling ruling = rulingService.vote(dto, id);
-            String message = String.format("Voto %s realizado na Pauta: %s", voteType, ruling.getName());
-            return Mono.just(new VoteResponseDTO(message));
+    private Mono<Ruling> vote(@PathVariable Long id, @Valid @RequestBody VoteRequestDTO dto){
+        Mono<Boolean> isValidCpf = myWebClient.get().uri("/users/" + dto.getCpf()).exchangeToMono(res -> {
+            if(res.statusCode().is2xxSuccessful()) return Mono.just(true);
+            throw new UnableToVoteException(dto.getCpf());
         });
+
+        return isValidCpf.subscribeOn(Schedulers.boundedElastic()).map(isValid -> rulingService.vote(dto,id));
     }
 
     @ExceptionHandler(RulingNotOpenedException.class)

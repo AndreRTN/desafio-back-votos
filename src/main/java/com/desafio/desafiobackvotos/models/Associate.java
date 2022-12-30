@@ -15,7 +15,6 @@ public class Associate {
 
     @Id
     private String cpf;
-    private LocalDateTime voted_at;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
