@@ -13,7 +13,7 @@ Passos:
 
 Vá até a pasta do projeto e entre na pasta do docker ./docker
 
-No terminal, digite: "docker-compose -p backend-votos up"
+No terminal, digite: "docker-compose -p backend-votos up -d"
 
 Irá iniciar o postgres e o cliente pgAdmin, para acessar o cliente a url é: http://localhost:15432
 
