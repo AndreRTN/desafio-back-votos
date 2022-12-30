@@ -51,7 +51,7 @@ Tarefa Bônus 2 - Mensageria e filas
 Tarefa Bônus 3 - Performance
 
 Realizei alguns testes de perfomance usando o JMeter, nos testes de resultado eu usei 100 mil o número de requests,
-já no de cadastro da pauta e de votação utilizei 10 mil.
+já no de cadastro da pauta e de votação utilizei 10 mil, na pasta perfomance_evidences contém as evidências do teste do JMeter.
 
 - Primeiro teste - Resultado da votação na pauta
   - Como após a contagem dos votos o resultado da pauta não irá mudar, tomei a decisão de usar cache nesse endpoint, 
