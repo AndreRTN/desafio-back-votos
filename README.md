@@ -4,6 +4,8 @@
 - Docker (Se não possuir o docker precisará baixar as dependências contidas nos arquivos compose.yml e configurar manualmente)
 
 - JDK 17
+- Microservice da validação do CPF e dos resultados (o projeto funciona sem ele , mas não irá enviar a mensagem para o kafka
+e nem será possível validar o cpf) https://github.com/AndreRTN/votos-microservice
 
 ## Para iniciar o backend responsável pela votação
 
@@ -20,6 +22,10 @@ o nome de usuário é postgres e a senha é:backendvotos123
 Com o banco de dados postgres já rodando, Na pasta do projeto, digite mvn package, irá gerar um .jar na pasta target,
 "java -jar .\target\desafio-back-votos-0.0.1-SNAPSHOT.jar" para executar o backend dos votos no localhost:8080
 ("Necessário ter o banco postgres na porta 5432 em execução")
+
+Para facilitar deixarei um link dos .jar das duas aplicações, se preferir baixar diretamente só precisará fazer o passo do docker
+Aplicação dos votos: https://drive.google.com/file/d/1dpVVX0FaH7uklWgA23gMP1A-oZoWcCka/view?usp=share_link
+Microservice: https://drive.google.com/file/d/1BL6gV_M-HBz3oRnjxYpoqMmtFX1WtCJH/view?usp=share_link
 
 ## Desafio-back-votos
  Desafio Técnico
