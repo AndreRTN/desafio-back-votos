@@ -1,4 +1,27 @@
-# desafio-back-votos
+
+## Requisitos:
+
+- Docker (Se não possuir o docker precisará baixar as dependências contidas nos arquivos compose.yml e configurar manualmente)
+
+- JDK 17
+
+## Para iniciar o backend responsável pela votação
+
+Passos:
+
+Vá até a pasta do projeto e entre na pasta do docker ./docker
+
+No terminal, digite: "docker-compose -p backend-votos up"
+
+Irá iniciar o postgres e o cliente pgAdmin, para acessar o cliente a url é: http://localhost:15432
+
+o nome de usuário é postgres e a senha é:backendvotos123
+
+Com o banco de dados postgres já rodando, Na pasta do projeto, digite mvn package, irá gerar um .jar na pasta target,
+"java -jar .\target\desafio-back-votos-0.0.1-SNAPSHOT.jar" para executar o backend dos votos no localhost:8080
+("Necessário ter o banco postgres na porta 5432 em execução")
+
+## Desafio-back-votos
  Desafio Técnico
 
 https://github.com/rh-southsystem/desafio-back-votos
